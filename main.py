@@ -5,6 +5,7 @@ import random
 import shutil
 import time
 import warnings
+os.environ["CUDA_VISIBLE_DEVICES"]="6,7"
 
 import torch
 import torch.nn as nn
@@ -23,9 +24,9 @@ model_names = sorted(name for name in models.__dict__
     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('data', metavar='DIR',
+parser.add_argument('--data', metavar='DIR', default="/mnt/share_disk/bruce_trie/misc_data_products/min_imagenet/",
                     help='path to dataset')
-parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
+parser.add_argument('--arch', '-a', metavar='ARCH', default='eca_resnet50',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
@@ -387,7 +388,8 @@ def accuracy(output, target, topk=(1,)):
 
         res = []
         for k in topk:
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            # correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)  # 修改这里
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
