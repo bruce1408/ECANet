@@ -1,13 +1,16 @@
+import torch
 import torch.nn as nn
 import math
 # import torch.utils.model_zoo as model_zoo
-from .eca_module import eca_layer
+try:
+    from .eca_module import eca_layer
+except ImportError:
+    from eca_module import eca_layer 
 
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
 
 
 class ECABasicBlock(nn.Module):
@@ -20,7 +23,7 @@ class ECABasicBlock(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes, 1)
         self.bn2 = nn.BatchNorm2d(planes)
-        self.eca = eca_layer(planes, k_size)
+        self.eca = eca_layer(planes, k_size)  # planes=64, k_size=3
         self.downsample = downsample
         self.stride = stride
 
@@ -85,7 +88,7 @@ class ECABottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-
+    # block是eca block
     def __init__(self, block, layers, num_classes=1000, k_size=[3, 3, 3, 3]):
         self.inplanes = 64
         super(ResNet, self).__init__()
@@ -208,3 +211,14 @@ def eca_resnet152(k_size=[3, 3, 3, 3], num_classes=1_000, pretrained=False):
     model = ResNet(ECABottleneck, [3, 8, 36, 3], num_classes=num_classes, k_size=k_size)
     model.avgpool = nn.AdaptiveAvgPool2d(1)
     return model
+
+
+if __name__ =="__main__":
+    input_tensor = torch.randn(1, 3, 224, 224)  # batch_size=1
+    model = eca_resnet34()
+    output = model(input_tensor)
+    print(output.shape)
+
+
+
+    

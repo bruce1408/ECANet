@@ -11,16 +11,19 @@ class eca_layer(nn.Module):
     """
     def __init__(self, channel, k_size=3):
         super(eca_layer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1) # 全局平均池化
+        
+        # 保证卷积后特征图尺寸不变
         self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         # feature descriptor on the global spatial information
-        y = self.avg_pool(x)
+        y = self.avg_pool(x)                            # [B,C,1,1]
 
         # Two different branches of ECA module
-        y = self.conv(y.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
+        y = self.conv(y.squeeze(-1).transpose(-1, -2))  # [B,1,C]
+        y = y.transpose(-1, -2).unsqueeze(-1)           # [B,C,1,1]
 
         # Multi-scale information fusion
         y = self.sigmoid(y)

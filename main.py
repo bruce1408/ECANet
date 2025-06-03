@@ -128,10 +128,10 @@ def main():
 
     # create model
     if args.pretrained:
-        print("=> using pre-trained model '{}'".format(args.arch))
+        logger.info("=> using pre-trained model '{}'".format(args.arch))
         model = models.__dict__[args.arch](k_size=args.ksize, pretrained=True)
     else:
-        print("=> creating model '{}'".format(args.arch))
+        logger.info("=> creating model '{}'".format(args.arch))
         if args.ksize == None:
             model = models.__dict__[args.arch]()
         else:
@@ -155,7 +155,7 @@ def main():
     print(model)
     
     # get the number of models parameters
-    print('Number of models parameters: {}'.format(
+    logger.info('Number of models parameters: {}'.format(
         sum([p.data.nelement() for p in model.parameters()])))
 
     # define loss function (criterion) and optimizer
@@ -168,17 +168,17 @@ def main():
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
+            # logger.info("=> loading checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             best_prec1 = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
-            print("=> loaded checkpoint '{}' (epoch {})"
+            logger.info("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
             del checkpoint
         else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
+            logger.info("=> no checkpoint found at '{}'".format(args.resume))
 
     cudnn.benchmark = True
 
@@ -228,7 +228,7 @@ def main():
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    print("the outupt_dir is: ",directory)
+    logger.info(f"the outupt_dir is: {directory}")
     Loss_plot = {}
     train_prec1_plot = {}
     train_prec5_plot = {}
@@ -240,11 +240,11 @@ def main():
         start_time = time.time()
         if args.distributed:
             train_sampler.set_epoch(epoch)
-        adjust_learning_rate(optimizer, epoch)
+        lr = adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
         # train(train_loader, model, criterion, optimizer, epoch)
-        loss_temp, train_prec1_temp, train_prec5_temp = train(train_loader, model, criterion, optimizer, epoch)
+        loss_temp, train_prec1_temp, train_prec5_temp = train(train_loader, model, criterion, optimizer, epoch, lr)
         Loss_plot[epoch] = loss_temp
         train_prec1_plot[epoch] = train_prec1_temp
         train_prec5_plot[epoch] = train_prec5_temp
@@ -281,7 +281,7 @@ def main():
         print("-" * 80)
 
 
-def train(train_loader, model, criterion, optimizer, epoch):
+def train(train_loader, model, criterion, optimizer, epoch, lr):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -329,12 +329,13 @@ def train(train_loader, model, criterion, optimizer, epoch):
             #        epoch, i, len(train_loader), batch_time=batch_time,
             #        data_time=data_time, loss=losses, top1=top1, top5=top5))
             
-            logger.info('Epoch: [{0}][{1}/{2}] '
-                  'Loss {loss.val:.4f} ({loss.avg:.4f}) '
-                  'Prec@1 {top1.val:.3f} ({top1.avg:.3f}) '
+            logger.info('Epoch: [{0}][{1}/{2}], '
+                  'Loss {loss.val:.4f} ({loss.avg:.4f}), '
+                  'Lr {lr:.4f}, '
+                  'Prec@1 {top1.val:.3f} ({top1.avg:.3f}), '
                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                    epoch, i, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses, top1=top1, top5=top5))
+                   data_time=data_time, loss=losses, lr=lr, top1=top1, top5=top5))
 
     return losses.avg, top1.avg, top5.avg
 
@@ -370,16 +371,15 @@ def validate(val_loader, model, criterion):
             end = time.time()
 
             if i % args.print_freq == 0:
-                print('Test: [{0}/{1}]\t'
-                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                logger.info('Test: [{0}/{1}]\t'
+                    #   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                       'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                       'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
                       'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                        i, len(val_loader), batch_time=batch_time, loss=losses,
                        top1=top1, top5=top5))
 
-        print(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'
-              .format(top1=top1, top5=top5))
+        logger.info(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1, top5=top5))
 
     return top1.avg, top5.avg
 
@@ -413,9 +413,11 @@ class AverageMeter(object):
 
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.lr * (0.1 ** (epoch // 30))
+    lr = args.lr * (0.1 ** (epoch // 20))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+    
+    return lr
 
 
 def accuracy(output, target, topk=(1,)):
