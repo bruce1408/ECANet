@@ -6,7 +6,7 @@ import shutil
 import time
 import warnings
 from spectrautils import print_utils, logging_utils
-# os.environ["CUDA_VISIBLE_DEVICES"]="4,5,6,7"
+# os.environ["CUDA_VISIBLE_DEVICES"]="3,4,6,7"
 
 import torch
 import torch.nn as nn
@@ -26,11 +26,11 @@ model_names = sorted(name for name in models.__dict__
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('--data', metavar='DIR', 
-                    default="/share/cdd/imagenet",
+                    default="/mnt/share_disk/bruce_trie/imagenet",
                     # default="/mnt/share_disk/bruce_trie/misc_data_products/min_imagenet",
                     help='path to dataset')
 
-parser.add_argument('--arch', '-a', metavar='ARCH', default='eca_resnet50',
+parser.add_argument('--arch', '-a', metavar='ARCH', default='eca_resnet34',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
@@ -45,7 +45,7 @@ parser.add_argument('--epochs', default=100, type=int, metavar='N',
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
 
-parser.add_argument('-b', '--batch-size', default=256, type=int,
+parser.add_argument('-b', '--batch-size', default=64, type=int,
                     metavar='N', help='mini-batch size (default: 256)')
 
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
@@ -61,8 +61,9 @@ parser.add_argument('--print-freq', '-p', default=100, type=int,
                     metavar='N', help='print frequency (default: 10)')
 
 parser.add_argument('--resume', 
-                    default='/mnt/share_disk/bruce_trie/workspace/ECANet/runs/eca_resnet50__20250601_115047/eca_resnet50__20250601_115047model_best.pth.tar', 
-                    type=str, metavar='PATH',
+                    # default='/mnt/share_disk/bruce_trie/workspace/ECANet/runs/eca_resnet50__20250601_115047/eca_resnet50__20250601_115047model_best.pth.tar', 
+                    default=None,
+                    metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
@@ -86,7 +87,9 @@ parser.add_argument('--seed', default=3042, type=int, nargs='+',
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
 
-parser.add_argument('--ksize', default=[3, 5, 5, 5], 
+parser.add_argument('--ksize', 
+                    # default=[3, 5, 5, 5],  # eca_resnet50
+                    default=[3, 3, 5, 7],  # eca_resnet34
                     type=list,
                     help='Manually select the eca module kernel size')
 
@@ -94,7 +97,7 @@ parser.add_argument('--action',
                     default='',
                     type=str,
                     help='other information.'
-                )
+                    )
                     
 
 best_prec1 = 0.0
@@ -161,9 +164,12 @@ def main():
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+    optimizer = torch.optim.SGD(
+        model.parameters(), 
+        args.lr,
+        momentum=args.momentum,
+        weight_decay=args.weight_decay
+    )
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -185,15 +191,17 @@ def main():
     # Data loading code
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225])
+    
     train_dataset = datasets.ImageFolder(
         traindir,
         transforms.Compose([
             transforms.RandomResizedCrop(224),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            normalize,
+            # normalize, # 不进行归一化
         ]))
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -209,7 +217,7 @@ def main():
             transforms.Resize(256),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
-            normalize,
+            # normalize, # 不进行归一化
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
@@ -224,7 +232,7 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     kernel_size = ''.join(map(str, args.ksize))
-    directory = os.path.join(script_dir, "runs", f"{args.arch}_{time.strftime('%Y%m%d_%H%M%S')}_{kernel_size}")
+    directory = os.path.join(script_dir, "runs_no_normalize_0719", f"{args.arch}_{time.strftime('%Y%m%d_%H%M%S')}_{kernel_size}")
     if not os.path.exists(directory):
         os.makedirs(directory)
 
