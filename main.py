@@ -5,8 +5,9 @@ import random
 import shutil
 import time
 import warnings
-from spectrautils import print_utils, logging_utils
-# os.environ["CUDA_VISIBLE_DEVICES"]="3,4,6,7"
+from spectrautils import logging_utils
+
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 import torch
 import torch.nn as nn
@@ -25,66 +26,112 @@ model_names = sorted(name for name in models.__dict__
     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--data', metavar='DIR', 
-                    default="/mnt/share_disk/bruce_trie/imagenet",
-                    # default="/mnt/share_disk/bruce_trie/misc_data_products/min_imagenet",
+parser.add_argument('--data', 
+                    metavar='DIR', 
+                    default="/home/bruce_ultra/data/datasets/imagenet/",
                     help='path to dataset')
 
-parser.add_argument('--arch', '-a', metavar='ARCH', default='eca_resnet34',
+parser.add_argument('--arch',
+                    '-a',
+                    metavar='ARCH',
+                    default='eca_resnet34',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
-                        ' (default: resnet18)')
+                        ' (default: resnet18)'
+                    )
 
-parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
+parser.add_argument('-j', 
+                    '--workers',
+                    default=32,
+                    type=int,
+                    metavar='N',
                     help='number of data loading workers (default: 4)')
 
-parser.add_argument('--epochs', default=100, type=int, metavar='N',
+parser.add_argument('--epochs',
+                    default=100,
+                    type=int,
+                    metavar='N',
                     help='number of total epochs to run')
 
-parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
+parser.add_argument('--start-epoch', 
+                    default=0,
+                    type=int,
+                    metavar='N',
                     help='manual epoch number (useful on restarts)')
+parser.add_argument('-b',
+                    '--batch-size',
+                    default=128,
+                    type=int,
+                    metavar='N',
+                    help='mini-batch size (default: 256)')
 
-parser.add_argument('-b', '--batch-size', default=64, type=int,
-                    metavar='N', help='mini-batch size (default: 256)')
+parser.add_argument('--lr',
+                    '--learning-rate',
+                    default=0.1,
+                    type=float,
+                    metavar='LR',
+                    help='initial learning rate')
 
-parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
-                    metavar='LR', help='initial learning rate')
-
-parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
+parser.add_argument('--momentum',
+                    default=0.9,
+                    type=float,
+                    metavar='M',
                     help='momentum')
 
-parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
-                    metavar='W', help='weight decay (default: 1e-4)')
+parser.add_argument('--weight-decay',
+                    '--wd',
+                    default=1e-4,
+                    type=float,
+                    metavar='W',
+                    help='weight decay (default: 1e-4)')
 
-parser.add_argument('--print-freq', '-p', default=100, type=int,
-                    metavar='N', help='print frequency (default: 10)')
+parser.add_argument('--print-freq', 
+                    '-p',
+                    default=100,
+                    type=int,
+                    metavar='N',
+                    help='print frequency (default: 10)')
 
-parser.add_argument('--resume', 
-                    # default='/mnt/share_disk/bruce_trie/workspace/ECANet/runs/eca_resnet50__20250601_115047/eca_resnet50__20250601_115047model_best.pth.tar', 
-                    default=None,
-                    metavar='PATH',
+parser.add_argument('--resume',
+                    default='/home/bruce_ultra/workspace/ECANet/runs/eca_resnet50_/model_best.pth.tar', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 
-parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
+parser.add_argument('-e',
+                    '--evaluate',
+                    dest='evaluate',
+                    action='store_true',
                     help='evaluate model on validation set')
 
-parser.add_argument('--pretrained', dest='pretrained', action='store_true',
+parser.add_argument('--pretrained',
+                    dest='pretrained',
+                    action='store_true',
                     help='use pre-trained model')
 
-parser.add_argument('--world-size', default=1, type=int,
+parser.add_argument('--world-size',
+                    default=1,
+                    type=int,
                     help='number of distributed processes')
 
-parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
+parser.add_argument('--dist-url',
+                    default='tcp://224.66.41.62:23456', 
+                    type=str,
                     help='url used to set up distributed training')
 
-parser.add_argument('--dist-backend', default='gloo', type=str,
+parser.add_argument('--dist-backend',
+                    default='gloo',
+                    type=str,
                     help='distributed backend')
 
-parser.add_argument('--seed', default=3042, type=int, nargs='+',
+parser.add_argument('--seed',
+                    default=3042, 
+                    type=int,
+                    nargs='+',
                     help='seed for initializing training. ')
 
-parser.add_argument('--gpu', default=None, type=int,
+parser.add_argument('--gpu',
+                    default=None, 
+                    type=int,
                     help='GPU id to use.')
 
 parser.add_argument('--ksize', 
@@ -97,7 +144,7 @@ parser.add_argument('--action',
                     default='',
                     type=str,
                     help='other information.'
-                    )
+                )
                     
 
 best_prec1 = 0.0
